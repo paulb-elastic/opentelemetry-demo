@@ -10,6 +10,37 @@ The following guide describes how to setup the OpenTelemetry demo with Elastic O
 
 Additionally, the OpenTelemetry Contrib collector has also been changed to the [Elastic OpenTelemetry Collector distribution](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md). This ensures a more integrated and optimized experience with Elastic Observability.
 
+## Running project_a and project_b in parallel
+
+You can run two instances of the demo side by side (e.g. to compare backends or
+environments). Each instance uses its own ports and sends telemetry with a
+distinct `deployment.environment` (`project_a` or `project_b`).
+
+| Instance   | UI / Envoy port | Envoy admin | Prometheus |
+|------------|-----------------|-------------|------------|
+| **project_a** | 8080            | 10000       | 9090       |
+| **project_b** | 8081            | 10001       | 9091       |
+
+**Start one or both:**
+
+```bash
+make start environment=project_a   # Demo UI at http://localhost:8080
+make start environment=project_b   # Demo UI at http://localhost:8081
+```
+
+**Stop:**
+
+```bash
+make stop environment=project_a
+make stop environment=project_b
+```
+
+Or use the shortcuts: `make start-project-a`, `make start-project-b`, `make stop-project-a`, `make stop-project-b`.
+
+Per-instance settings (Elasticsearch endpoint, API key, ports, etc.) are in
+`.env.project_a` and `.env.project_b`. Copy from `.env.project_a.example` and
+`.env.project_b.example` if you need to create them.
+
 ## Docker
 
 ### Prerequisites:

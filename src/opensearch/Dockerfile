@@ -5,6 +5,9 @@ FROM opensearchproject/opensearch:3.2.0
 
 USER 0
 
+# Install curl for Docker healthcheck (base image may not include it)
+RUN if command -v dnf >/dev/null 2>&1; then dnf install -y curl && dnf clean all; elif command -v yum >/dev/null 2>&1; then yum install -y curl && yum clean all; elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*; fi
+
 # Remove plugins in dependency order - remove dependent plugins first
 # These plugins are not needed for basic log storage and retrieval in the demo
 RUN /usr/share/opensearch/bin/opensearch-plugin remove opensearch-security-analytics && \

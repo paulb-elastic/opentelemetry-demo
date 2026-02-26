@@ -14,6 +14,7 @@ http {
     otel_trace_context propagate;
     otel_service_name ${OTEL_SERVICE_NAME};
     otel_span_name image-provider;
+    otel_resource_attr deployment.environment ${DEPLOYMENT_ENVIRONMENT};
 
 
     include mime.types;

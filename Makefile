@@ -14,6 +14,19 @@ DOCKER_COMPOSE_CMD ?= docker compose
 DOCKER_COMPOSE_ENV=--env-file .env --env-file .env.override
 DOCKER_COMPOSE_BUILD_ARGS=
 
+# Optional compose override (e.g. docker-compose.elastic.yml); must not set fixed container_name if using parallel runs
+DOCKER_COMPOSE_FILES := -f docker-compose.yml
+ifneq ($(wildcard docker-compose.elastic.yml),)
+	DOCKER_COMPOSE_FILES += -f docker-compose.elastic.yml
+endif
+
+# Parallel runs: set environment=project_a or environment=project_b to use .env.project_a / .env.project_b
+# (COMPOSE_PROJECT_NAME and env-specific ports/OTEL_RESOURCE_ATTRIBUTES)
+ifdef environment
+	DOCKER_COMPOSE_ENV += --env-file .env.$(environment)
+	export COMPOSE_PROJECT_NAME := $(environment)
+endif
+
 # Java Workaround for macOS 15.2+ and M4 chips (see https://bugs.openjdk.org/browse/JDK-8345296)
 ifeq ($(shell uname -m),arm64)
 	ifeq ($(shell uname -s),Darwin)
@@ -94,7 +107,7 @@ install-tools: $(MISSPELL)
 
 .PHONY: build
 build:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS)
 
 .PHONY: build-and-push
 build-and-push:
@@ -183,32 +196,60 @@ check-clean-work-tree:
 
 .PHONY: start
 start:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) up --force-recreate --remove-orphans --detach
-	@echo ""
-	@echo "OpenTelemetry Demo is running."
-	@echo "Go to http://localhost:8080 for the demo UI."
-	@echo "Go to http://localhost:8080/jaeger/ui for the Jaeger UI."
-	@echo "Go to http://localhost:8080/grafana/ for the Grafana UI."
-	@echo "Go to http://localhost:8080/loadgen/ for the Load Generator UI."
-	@echo "Go to http://localhost:8080/feature/ to change feature flags."
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) up --force-recreate --remove-orphans --detach
+	@set -a; \
+	[ -f .env ] && . ./.env; \
+	[ -f .env.override ] && . ./.env.override; \
+	if [ -n "$(environment)" ] && [ -f .env.$(environment) ]; then . ./.env.$(environment); fi; \
+	set +a; \
+	port=$${ENVOY_PORT:-8080}; \
+	echo ""; \
+	echo "OpenTelemetry Demo is running."; \
+	echo "Go to http://localhost:$$port for the demo UI."; \
+	echo "Go to http://localhost:$$port/jaeger/ui for the Jaeger UI."; \
+	echo "Go to http://localhost:$$port/grafana/ for the Grafana UI."; \
+	echo "Go to http://localhost:$$port/loadgen/ for the Load Generator UI."; \
+	echo "Go to http://localhost:$$port/feature/ to change feature flags."
+
+.PHONY: start-project-a
+start-project-a:
+	$(MAKE) start environment=project_a
+
+.PHONY: start-project-b
+start-project-b:
+	$(MAKE) start environment=project_b
 
 .PHONY: start-minimal
 start-minimal:
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose.minimal.yml up --force-recreate --remove-orphans --detach
-	@echo ""
-	@echo "OpenTelemetry Demo in minimal mode is running."
-	@echo "Go to http://localhost:8080 for the demo UI."
-	@echo "Go to http://localhost:8080/jaeger/ui for the Jaeger UI."
-	@echo "Go to http://localhost:8080/grafana/ for the Grafana UI."
-	@echo "Go to http://localhost:8080/loadgen/ for the Load Generator UI."
-	@echo "Go to https://opentelemetry.io/docs/demo/feature-flags/ to learn how to change feature flags."
+	@set -a; \
+	[ -f .env ] && . ./.env; \
+	[ -f .env.override ] && . ./.env.override; \
+	if [ -n "$(environment)" ] && [ -f .env.$(environment) ]; then . ./.env.$(environment); fi; \
+	set +a; \
+	port=$${ENVOY_PORT:-8080}; \
+	echo ""; \
+	echo "OpenTelemetry Demo in minimal mode is running."; \
+	echo "Go to http://localhost:$$port for the demo UI."; \
+	echo "Go to http://localhost:$$port/jaeger/ui for the Jaeger UI."; \
+	echo "Go to http://localhost:$$port/grafana/ for the Grafana UI."; \
+	echo "Go to http://localhost:$$port/loadgen/ for the Load Generator UI."; \
+	echo "Go to https://opentelemetry.io/docs/demo/feature-flags/ to learn how to change feature flags."
 
 .PHONY: stop
 stop:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) down --remove-orphans --volumes
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) down --remove-orphans --volumes
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) -f docker-compose-tests.yml down --remove-orphans --volumes
 	@echo ""
 	@echo "OpenTelemetry Demo is stopped."
+
+.PHONY: stop-project-a
+stop-project-a:
+	$(MAKE) stop environment=project_a
+
+.PHONY: stop-project-b
+stop-project-b:
+	$(MAKE) stop environment=project_b
 
 # Use to restart a single service component
 # Example: make restart service=frontend
@@ -220,10 +261,10 @@ ifdef SERVICE
 endif
 
 ifdef service
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) stop $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) rm --force $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) create $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) start $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) stop $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) rm --force $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) create $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) start $(service)
 else
 	@echo "Please provide a service name using `service=[service name]` or `SERVICE=[service name]`"
 endif
@@ -238,11 +279,11 @@ ifdef SERVICE
 endif
 
 ifdef service
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) stop $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) rm --force $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) create $(service)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) start $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) stop $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) rm --force $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) create $(service)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_ENV) start $(service)
 else
 	@echo "Please provide a service name using `service=[service name]` or `SERVICE=[service name]`"
 endif

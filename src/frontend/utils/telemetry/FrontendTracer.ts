@@ -15,15 +15,22 @@ import { SessionIdProcessor } from './SessionIdProcessor';
 const {
   NEXT_PUBLIC_OTEL_SERVICE_NAME = '',
   NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = '',
+  NEXT_PUBLIC_DEPLOYMENT_ENVIRONMENT = '',
   IS_SYNTHETIC_REQUEST = '',
 } = typeof window !== 'undefined' ? window.ENV : {};
+
+const ATTR_DEPLOYMENT_ENVIRONMENT = 'deployment.environment';
 
 const FrontendTracer = async () => {
   const { ZoneContextManager } = await import('@opentelemetry/context-zone');
 
-  let resource = resourceFromAttributes({
+  const resourceAttributes: Record<string, string> = {
     [ATTR_SERVICE_NAME]: NEXT_PUBLIC_OTEL_SERVICE_NAME,
-  });
+  };
+  if (NEXT_PUBLIC_DEPLOYMENT_ENVIRONMENT) {
+    resourceAttributes[ATTR_DEPLOYMENT_ENVIRONMENT] = NEXT_PUBLIC_DEPLOYMENT_ENVIRONMENT;
+  }
+  let resource = resourceFromAttributes(resourceAttributes);
   const detectedResources = detectResources({detectors: [browserDetector]});
   resource = resource.merge(detectedResources);
 

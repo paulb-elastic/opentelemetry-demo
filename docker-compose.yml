@@ -10,7 +10,7 @@ x-default-logging: &logging
 
 networks:
   default:
-    name: opentelemetry-demo
+    name: opentelemetry-demo-${ENVIRONMENT}
     driver: bridge
 
 services:
@@ -20,7 +20,6 @@ services:
   # Accounting service
   accounting:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-accounting
-    container_name: accounting
     build:
       context: ./
       dockerfile: ${ACCOUNTING_DOCKERFILE}
@@ -49,7 +48,6 @@ services:
   # AdService
   ad:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-ad
-    container_name: ad
     build:
       context: ./
       dockerfile: ${AD_DOCKERFILE}
@@ -85,7 +83,6 @@ services:
   # Cart service
   cart:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-cart
-    container_name: cart
     build:
       context: ./
       dockerfile: ${CART_DOCKERFILE}
@@ -120,7 +117,6 @@ services:
   # Checkout service
   checkout:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-checkout
-    container_name: checkout
     build:
       context: ./
       dockerfile: ${CHECKOUT_DOCKERFILE}
@@ -173,7 +169,6 @@ services:
   # Currency service
   currency:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-currency
-    container_name: currency
     build:
       context: ./
       dockerfile: ${CURRENCY_DOCKERFILE}
@@ -204,7 +199,6 @@ services:
   # Email service
   email:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-email
-    container_name: email
     build:
       context: ./
       dockerfile: ${EMAIL_DOCKERFILE}
@@ -234,7 +228,6 @@ services:
   # Fraud Detection service
   fraud-detection:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-fraud-detection
-    container_name: fraud-detection
     build:
       context: ./
       dockerfile: ${FRAUD_DOCKERFILE}
@@ -267,7 +260,6 @@ services:
   # Frontend
   frontend:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-frontend
-    container_name: frontend
     build:
       context: ./
       dockerfile: ${FRONTEND_DOCKERFILE}
@@ -293,6 +285,7 @@ services:
       - SHIPPING_ADDR
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_RESOURCE_ATTRIBUTES
+      - DEPLOYMENT_ENVIRONMENT=${COMPOSE_PROJECT_NAME:-${ENVIRONMENT:-default}}
       - ENV_PLATFORM
       - OTEL_SERVICE_NAME=frontend
       - PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
@@ -329,7 +322,6 @@ services:
   # Frontend Proxy (Envoy)
   frontend-proxy:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-frontend-proxy
-    container_name: frontend-proxy
     build:
       context: ./
       dockerfile: ${FRONTEND_PROXY_DOCKERFILE}
@@ -383,7 +375,6 @@ services:
   # image-provider
   image-provider:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-image-provider
-    container_name: image-provider
     build:
       context: ./
       dockerfile: ${IMAGE_PROVIDER_DOCKERFILE}
@@ -401,6 +392,7 @@ services:
       - OTEL_COLLECTOR_HOST
       - OTEL_COLLECTOR_PORT_GRPC
       - OTEL_RESOURCE_ATTRIBUTES
+      - DEPLOYMENT_ENVIRONMENT
       - OTEL_SERVICE_NAME=image-provider
     depends_on:
       otel-collector:
@@ -410,7 +402,6 @@ services:
   # Load Generator
   load-generator:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-load-generator
-    container_name: load-generator
     build:
       context: ./
       dockerfile: ${LOAD_GENERATOR_DOCKERFILE}
@@ -449,7 +440,6 @@ services:
   # Payment service
   payment:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-payment
-    container_name: payment
     build:
       context: ./
       dockerfile: ${PAYMENT_DOCKERFILE}
@@ -481,7 +471,6 @@ services:
   # Product Catalog service
   product-catalog:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-product-catalog
-    container_name: product-catalog
     build:
       context: ./
       dockerfile: ${PRODUCT_CATALOG_DOCKERFILE}
@@ -516,7 +505,6 @@ services:
   # Product reviews service
   product-reviews:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-product-reviews
-    container_name: product-reviews
     build:
       context: ./
       dockerfile: ${PRODUCT_REVIEWS_DOCKERFILE}
@@ -561,7 +549,6 @@ services:
   # Quote service
   quote:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-quote
-    container_name: quote
     build:
       context: ./
       dockerfile: ${QUOTE_DOCKERFILE}
@@ -591,7 +578,6 @@ services:
   # Recommendation service
   recommendation:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-recommendation
-    container_name: recommendation
     build:
       context: ./
       dockerfile: ${RECOMMENDATION_DOCKERFILE}
@@ -627,7 +613,6 @@ services:
   # Shipping service
   shipping:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-shipping
-    container_name: shipping
     build:
       context: ./
       dockerfile: ${SHIPPING_DOCKERFILE}
@@ -659,7 +644,6 @@ services:
   # Flagd, feature flagging service
   flagd:
     image: ${FLAGD_IMAGE}
-    container_name: flagd
     deploy:
       resources:
         limits:
@@ -687,7 +671,6 @@ services:
   # Flagd UI for configuring the feature flag service
   flagd-ui:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-flagd-ui
-    container_name: flagd-ui
     build:
       context: ./
       dockerfile: ${FLAGD_UI_DOCKERFILE}
@@ -719,7 +702,6 @@ services:
   # Kafka used by Checkout, Accounting, and Fraud Detection services
   kafka:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-kafka
-    container_name: kafka
     build:
       context: ./
       dockerfile: ${KAFKA_DOCKERFILE}
@@ -754,7 +736,6 @@ services:
   # LLM used by Product Review service
   llm:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-llm
-    container_name: llm
     build:
       context: ./
       dockerfile: ${LLM_DOCKERFILE}
@@ -778,7 +759,6 @@ services:
   # Postgresql used by Accounting service
   postgresql:
     image: ${IMAGE_NAME}:${DEMO_VERSION}-postgresql
-    container_name: postgresql
     build:
       context: ./
       dockerfile: ${POSTGRES_DOCKERFILE}
@@ -800,7 +780,6 @@ services:
   # Valkey used by Cart service
   valkey-cart:
     image: ${VALKEY_IMAGE}
-    container_name: valkey-cart
     user: valkey
     deploy:
       resources:
@@ -818,7 +797,6 @@ services:
   # Jaeger
   jaeger:
     image: ${JAEGERTRACING_IMAGE}
-    container_name: jaeger
     command:
       - "--config=file:/etc/jaeger/config.yml"
     deploy:
@@ -843,7 +821,6 @@ services:
   # Grafana
   grafana:
     image: ${GRAFANA_IMAGE}
-    container_name: grafana
     deploy:
       resources:
         limits:
@@ -861,7 +838,6 @@ services:
   # OpenTelemetry Collector
   otel-collector:
     image: ${COLLECTOR_CONTRIB_IMAGE}
-    container_name: otel-collector
     deploy:
       resources:
         limits:
@@ -902,7 +878,6 @@ services:
   # Prometheus
   prometheus:
     image: ${PROMETHEUS_IMAGE}
-    container_name: prometheus
     command:
       - --web.console.templates=/etc/prometheus/consoles
       - --web.console.libraries=/etc/prometheus/console_libraries
@@ -926,7 +901,6 @@ services:
 
   # OpenSearch
   opensearch:
-    container_name: opensearch
     build:
       context: ./
       dockerfile: ${OPENSEARCH_DOCKERFILE}
@@ -957,9 +931,9 @@ services:
     ports:
       - "9200"
     healthcheck:
-      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
-      start_period: 10s
-      interval: 5s
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"' || exit 1"]
+      start_period: 60s
+      interval: 10s
       timeout: 10s
       retries: 10
     logging: *logging
