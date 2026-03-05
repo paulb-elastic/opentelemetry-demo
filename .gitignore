@@ -57,3 +57,6 @@ test/tracetesting/tracetesting-vars.yaml
 .env.override
 .env.project_a
 .env.project_b
+.env.project_tempproject
+.env.project_origin
+.env.project_remote 

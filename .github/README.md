@@ -10,36 +10,54 @@ The following guide describes how to setup the OpenTelemetry demo with Elastic O
 
 Additionally, the OpenTelemetry Contrib collector has also been changed to the [Elastic OpenTelemetry Collector distribution](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md). This ensures a more integrated and optimized experience with Elastic Observability.
 
-## Running project_a and project_b in parallel
+## Running oTel demos in parallel
 
-You can run two instances of the demo side by side (e.g. to compare backends or
+You can run multiple instances of the demo side by side (e.g. to compare backends or
 environments). Each instance uses its own ports and sends telemetry with a
-distinct `deployment.environment` (`project_a` or `project_b`).
+distinct `deployment.environment`.
+
+Copy the `.env.example_parallel` file and name it for your environment, for example `.env.project_a`.
+
+Update the main block at the top of your corresponding `.env` files:
+- `UNIQUE_NAME`
+  - The unique name of this project (e.g. `project_a`)
+  - Ensure there is a corresponding .env.UNIQUE_NAME file (e.g. `.env.project_a`)
+- `UNIQUE_PORT_OFFSET`
+  - The _digit_ offset for the various ports used by the oTel demo components (e.g. `1`)
+  - This will _replace_ the final digit of the typical ports used, for example, setting `UNIQUE_PORT_OFFSET=1` will set ports as follows:
+    - `ENVOY_PORT=8081`
+    - `ENVOY_ADMIN_PORT=10001`
+    - `PROMETHEUS_PORT=9091`
+- `ELASTICSEARCH_ENDPOINT`
+  - The Elasticsearch endpoint, including http/https protocol
+  - As this parallel run configuration is set to use the oTel collector, get this from the onboarding flow (Add data > Application > OpenTelemetry)
+  - See the [docs](https://github.com/elastic/opentelemetry-demo/tree/main/.github#motlp-1) for more details
+- `ELASTICSEARCH_API_KEY`
+  - The API key for the data to ingest into Elasticsearch
+  - As this parallel run configuration is set to use the oTel collector, get this from the onboarding flow (Add data > Application > OpenTelemetry)
+    - don't include the `Authorization=ApiKey`, but just the key after this
+  - See the [docs](https://github.com/elastic/opentelemetry-demo/tree/main/.github#motlp-1) for more details
+
+Once done, you can start the oTel demo with: `make start environment=UNIQUE_NAME`, for example:
+
+```bash
+make start environment=project_a
+make start environment=project_b
+```
+
+Depending on the `.env` configurations, this could start the oTel demo up on:
 
 | Instance   | UI / Envoy port | Envoy admin | Prometheus |
 |------------|-----------------|-------------|------------|
 | **project_a** | 8080            | 10000       | 9090       |
 | **project_b** | 8081            | 10001       | 9091       |
 
-**Start one or both:**
-
-```bash
-make start environment=project_a   # Demo UI at http://localhost:8080
-make start environment=project_b   # Demo UI at http://localhost:8081
-```
-
-**Stop:**
+Stop these demo instances with: `make stop environment=UNIQUE_NAME`, for example:
 
 ```bash
 make stop environment=project_a
 make stop environment=project_b
 ```
-
-Or use the shortcuts: `make start-project-a`, `make start-project-b`, `make stop-project-a`, `make stop-project-b`.
-
-Per-instance settings (Elasticsearch endpoint, API key, ports, etc.) are in
-`.env.project_a` and `.env.project_b`. Copy from `.env.project_a.example` and
-`.env.project_b.example` if you need to create them.
 
 ## Docker
 
