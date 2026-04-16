@@ -55,5 +55,5 @@ test/tracetesting/tracetesting-vars.yaml
 !src/currency/build
 
 .env.*
-!.env.example_parallel
+!.env.example_*
 
