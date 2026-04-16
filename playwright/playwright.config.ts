@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: true,
   retries: 1,
   workers: process.env.WORKERS ? parseInt(process.env.WORKERS) : 2,
-  repeatEach: process.env.REPEAT ? parseInt(process.env.REPEAT) : 1,
+  repeatEach: process.env.FILE_REPEATS ? parseInt(process.env.FILE_REPEATS) : 1,
   reporter: [['html', { open: 'never' }], ['list']],
 
   use: {

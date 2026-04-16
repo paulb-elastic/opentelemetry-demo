@@ -16,47 +16,98 @@ npm install
 npx playwright install chromium
 ```
 
-## Running journeys
+## Commands
 
 All commands run from this `playwright/` directory.
 
-### Quick reference
+| Command | What it does |
+|---|---|
+| `npm run journey` | All journeys once — quick smoke run (~1 min) |
+| `npm run journey:headed` | Same, with visible browser windows |
+| `npm run journey:sustained` | All journeys looped — mixed structured + random traffic (~2 min) |
+| `npm run journey:forever` | **Random traffic until Ctrl+C** — repeats indefinitely |
+| `npm run journey:browse` | Browse-products journey only |
+| `npm run journey:cart` | Add-to-cart journey only |
+| `npm run journey:checkout` | Full checkout journey only |
+| `npm run journey:currency` | Currency-switcher journey only |
+| `npm run journey:loop` | Randomized traffic-loop journey only (single pass) |
+| `npm run report` | Open the last HTML run report |
 
-| Command | Workers | Repeats | What it does |
-|---|---|---|---|
-| `npm run journey` | 2 | 1 | All journeys once — quick smoke run |
-| `npm run journey:headed` | 2 | 1 | Same, with visible browser windows |
-| `npm run journey:sustained` | 4 | 3 | **All journeys looped** — default sustained traffic |
-| `npm run journey:browse` | 2 | 1 | Browse-products journey only |
-| `npm run journey:cart` | 2 | 1 | Add-to-cart journey only |
-| `npm run journey:checkout` | 2 | 1 | Full checkout journey only |
-| `npm run journey:currency` | 2 | 1 | Currency-switcher journey only |
-| `npm run journey:loop` | 2 | 1 | Randomized traffic-loop journey only |
-| `npm run report` | — | — | Open the last HTML run report |
+## Controlling how much traffic is generated
 
-### Customising workers and repeats
+### Variables for all commands except `journey:forever`
 
-`WORKERS`, `REPEAT`, and `LOOP_COUNT` work with **any** command:
-
-```bash
-# All journeys, 4 workers, repeated 5 times
-WORKERS=4 REPEAT=5 npm run journey
-
-# All journeys, heavier load with custom loop count
-WORKERS=6 REPEAT=4 LOOP_COUNT=20 npm run journey:sustained
-
-# Just the checkout flow, 3 repeats
-REPEAT=3 npm run journey:checkout
-```
-
-## Environment variables
+Three variables can be passed to any command. The defaults are the minimal "just run it once" values.
 
 | Variable | Default | Description |
 |---|---|---|
-| `BASE_URL` | `http://localhost:8080` | Override if the demo runs on a different port |
-| `WORKERS` | `2` | Number of parallel Chromium workers (overridden to `4` by `journey:sustained`) |
-| `REPEAT` | `1` | Repeat every journey file N times (overridden to `3` by `journey:sustained`) |
-| `LOOP_COUNT` | `5` | Iterations per worker inside `traffic-loop.journey.ts` (overridden to `10` by `journey:sustained`) |
+| `WORKERS` | `2` | Parallel Chromium browsers. Each generates its own Embrace session. |
+| `FILE_REPEATS` | `1` | How many times each journey file runs end-to-end (multiplies all flows). |
+| `LOOP_ITERATIONS` | `5` | Iterations per pass of `traffic-loop.journey.ts` only. No effect on other journeys. |
+
+```bash
+# Example: 4 browsers, every journey file repeated 3 times
+WORKERS=4 FILE_REPEATS=3 npm run journey
+
+# Example: traffic-loop only, 20 random iterations
+LOOP_ITERATIONS=20 npm run journey:loop
+```
+
+> **Note on `FILE_REPEATS` and `WORKERS`:** when running `journey:loop` (traffic-loop only), set `FILE_REPEATS` equal to `WORKERS` so every worker gets work. Otherwise spare workers sit idle. `journey:sustained` and `journey:forever` handle this automatically.
+
+### `journey:forever` — its own defaults
+
+`journey:forever` is designed for sustained traffic so it uses higher defaults than the standard commands. These are set inside `scripts/run-forever.sh`, not via `playwright.config.ts`:
+
+| Variable | Default in `journey:forever` |
+|---|---|
+| `WORKERS` | `4` |
+| `FILE_REPEATS` | equal to `WORKERS` (auto) |
+| `LOOP_ITERATIONS` | `30` |
+
+Each pass runs ~3 minutes (30 iterations × ~5s avg per iteration). Passes repeat back-to-back until Ctrl+C:
+
+```
+=== Pass 1 — Thu Apr 16 10:00:00 PST 2026 ===
+... flows running ...
+
+=== Pass 2 — Thu Apr 16 10:03:00 PST 2026 ===
+^C
+Stopped after 2 pass(es). Thu Apr 16 10:05:30 PST 2026
+```
+
+Override any of the defaults the same way:
+
+```bash
+WORKERS=6 LOOP_ITERATIONS=40 npm run journey:forever
+```
+
+### `journey:sustained` — what it runs
+
+`journey:sustained` is equivalent to:
+
+```bash
+WORKERS=4 FILE_REPEATS=3 LOOP_ITERATIONS=10 npm run journey
+```
+
+Total flows across the full run:
+
+| Journey | Calculation | Total flows |
+|---|---|---|
+| add-to-cart | 10 products × 3 repeats | 30 |
+| browse-products | 2 journeys × 3 repeats | 6 |
+| full-checkout | 5 product pairs × 3 repeats | 15 |
+| currency-switcher | 3 journeys × 3 repeats | 9 |
+| traffic-loop | 3 repeats × 10 iterations | 30 |
+| **Total** | | **90 flows, ~2 min** |
+
+### `BASE_URL`
+
+Override if the demo runs on a different port (default: `http://localhost:8080`):
+
+```bash
+BASE_URL=http://localhost:9090 npm run journey
+```
 
 ## Journey files
 
@@ -66,4 +117,4 @@ REPEAT=3 npm run journey:checkout
 | `add-to-cart.journey.ts` | Product detail → add to cart → assert badge (all 10 products) |
 | `full-checkout.journey.ts` | Add 2 products → cart → place order → confirmation (5 pairs) |
 | `currency-switcher.journey.ts` | Switch USD/EUR/JPY/GBP/CAD on home page + browse |
-| `traffic-loop.journey.ts` | Randomized mix of all flows, `LOOP_COUNT` iterations |
+| `traffic-loop.journey.ts` | Randomized mix of all flows, `LOOP_ITERATIONS` per pass |

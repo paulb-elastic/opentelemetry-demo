@@ -77,6 +77,17 @@ the existing OTel collector export, with no changes to backend instrumentation.
    No Docker image rebuild is required — the value is injected at container startup via
    `window.ENV` and delivered to the browser on each page load.
 
+### Run Playwright Journeys to Generate Traffic
+
+There are some Playwright journeys configured to generate traffic against the oTel demo that will beacon RUM data back to Embrace, too.
+
+For example, by running the following command (from the `playwright` folder) to run random journeys indefinitely:
+```
+npm run journey:forever
+```
+
+See the [corresponding README](../playwright/README.md) for more details.
+
 ### How it works
 
 - `src/frontend/utils/telemetry/EmbraceTracer.ts` calls `initSDK` with `registerGlobally: false`

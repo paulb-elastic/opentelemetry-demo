@@ -6,12 +6,12 @@
  * Playwright worker produces a unique session in Embrace.io RUM.
  *
  * Control via environment variables:
- *   LOOP_COUNT   Number of loop iterations per worker (default: 5)
- *   WORKERS      Set in playwright.config.ts (default: 2)
- *   REPEAT       Set in playwright.config.ts to repeat this file N times
+ *   LOOP_ITERATIONS   Number of random flow iterations per run (default: 5)
+ *   WORKERS           Set in playwright.config.ts (default: 2)
+ *   FILE_REPEATS      Set in playwright.config.ts to repeat this file N times
  *
- * Example — 10 minutes of heavy traffic:
- *   LOOP_COUNT=20 WORKERS=4 REPEAT=3 npx playwright test user_journeys/traffic-loop.journey.ts
+ * Example — sustained heavy traffic:
+ *   LOOP_ITERATIONS=20 WORKERS=4 FILE_REPEATS=3 npx playwright test user_journeys/traffic-loop.journey.ts
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -135,7 +135,7 @@ async function flowCurrency(page: Page) {
 
 // — Main loop —
 
-const LOOP_COUNT = process.env.LOOP_COUNT ? parseInt(process.env.LOOP_COUNT) : 5;
+const LOOP_ITERATIONS = process.env.LOOP_ITERATIONS ? parseInt(process.env.LOOP_ITERATIONS) : 5;
 
 const FLOWS: Array<{ name: string; fn: (page: Page) => Promise<void> }> = [
   { name: 'browse', fn: flowBrowse },
@@ -144,14 +144,14 @@ const FLOWS: Array<{ name: string; fn: (page: Page) => Promise<void> }> = [
   { name: 'currency', fn: flowCurrency },
 ];
 
-test(`traffic loop — ${LOOP_COUNT} iterations`, async ({ page }) => {
+test(`traffic loop — ${LOOP_ITERATIONS} iterations`, async ({ page }) => {
   // Each iteration can take up to ~15s (checkout flow + think-time).
   // Give the test a generous per-loop budget so it never races the default 30s timeout.
-  test.setTimeout(LOOP_COUNT * 20_000);
+  test.setTimeout(LOOP_ITERATIONS * 20_000);
 
-  for (let iteration = 1; iteration <= LOOP_COUNT; iteration++) {
+  for (let iteration = 1; iteration <= LOOP_ITERATIONS; iteration++) {
     const flow = randomItem(FLOWS);
-    console.log(`[loop] iteration ${iteration}/${LOOP_COUNT} — running flow: ${flow.name}`);
+    console.log(`[loop] iteration ${iteration}/${LOOP_ITERATIONS} — running flow: ${flow.name}`);
 
     try {
       await flow.fn(page);

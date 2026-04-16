@@ -6,7 +6,8 @@
   "scripts": {
     "journey": "playwright test",
     "journey:headed": "playwright test --headed",
-    "journey:sustained": "WORKERS=4 REPEAT=3 LOOP_COUNT=10 playwright test",
+    "journey:sustained": "WORKERS=4 FILE_REPEATS=3 LOOP_ITERATIONS=10 playwright test",
+    "journey:forever": "bash scripts/run-forever.sh",
     "journey:browse": "playwright test user_journeys/browse-products.journey.ts",
     "journey:cart": "playwright test user_journeys/add-to-cart.journey.ts",
     "journey:checkout": "playwright test user_journeys/full-checkout.journey.ts",
