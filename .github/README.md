@@ -37,6 +37,8 @@ Update the main block at the top of your corresponding `.env` files:
   - As this parallel run configuration is set to use the oTel collector, get this from the onboarding flow (Add data > Application > OpenTelemetry)
     - don't include the `Authorization=ApiKey`, but just the key after this
   - See the [docs](https://github.com/elastic/opentelemetry-demo/tree/main/.github#motlp-1) for more details
+- `NEXT_PUBLIC_EMBRACE_APP_ID`
+  - More details [below](#embrace-rum-integration), this is the Embrace RUM APP ID
 
 Once done, you can start the oTel demo with: `make start environment=UNIQUE_NAME`, for example:
 
@@ -58,6 +60,30 @@ Stop these demo instances with: `make stop environment=UNIQUE_NAME`, for example
 make stop environment=project_a
 make stop environment=project_b
 ```
+
+## Embrace RUM Integration
+
+The `embrace` branch adds the [Embrace Web SDK](https://embrace.io/docs/web/getting-started)
+for Real User Monitoring (RUM). Browser session data is beaconed to Embrace alongside
+the existing OTel collector export, with no changes to backend instrumentation.
+
+### Configuration
+
+1. Register your app at [dash.embrace.io](https://dash.embrace.io) to get an App ID.
+2. Set it in `.env`:
+   ```
+   NEXT_PUBLIC_EMBRACE_APP_ID=your_app_id_here
+   ```
+   No Docker image rebuild is required — the value is injected at container startup via
+   `window.ENV` and delivered to the browser on each page load.
+
+### How it works
+
+- `src/frontend/utils/telemetry/EmbraceTracer.ts` calls `initSDK` with `registerGlobally: false`
+  so Embrace runs alongside (not instead of) the existing `FrontendTracer` OTel provider.
+- Both providers start on page load inside `_app.tsx`.
+- Sessions appear in the [Embrace dashboard](https://dash.embrace.io) once a session ends
+  (tab closed or backgrounded). It may take a few minutes for the first session to appear.
 
 ## Docker
 

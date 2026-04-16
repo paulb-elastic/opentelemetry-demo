@@ -28,6 +28,7 @@ const {
 } = process.env;
 
 const nextConfig = {
+  serverExternalPackages: ['@opentelemetry/instrumentation'],
   reactStrictMode: true,
   output: 'standalone',
   compiler: {

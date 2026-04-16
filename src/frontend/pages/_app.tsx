@@ -9,6 +9,7 @@ import CartProvider from '../providers/Cart.provider';
 import { ThemeProvider } from 'styled-components';
 import Theme from '../styles/Theme';
 import FrontendTracer from '../utils/telemetry/FrontendTracer';
+import { initEmbrace } from '../utils/telemetry/EmbraceTracer';
 import SessionGateway from '../gateways/Session.gateway';
 import { OpenFeatureProvider, OpenFeature } from '@openfeature/react-sdk';
 import { FlagdWebProvider } from '@openfeature/flagd-web-provider';
@@ -21,12 +22,14 @@ declare global {
       NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?: string;
       NEXT_PUBLIC_DEPLOYMENT_ENVIRONMENT?: string;
       IS_SYNTHETIC_REQUEST?: string;
+      NEXT_PUBLIC_EMBRACE_APP_ID?: string;
     };
   }
 }
 
 if (typeof window !== 'undefined') {
   FrontendTracer();
+  initEmbrace();
   if (window.location) {
     const session = SessionGateway.getSession();
 
