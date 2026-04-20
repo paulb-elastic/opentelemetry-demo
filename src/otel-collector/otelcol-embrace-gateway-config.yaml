@@ -1,0 +1,78 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Standalone OTel Collector config for the Embrace → Elastic mOTLP gateway.
+#
+# Receives OTLP data from Embrace (authenticated via bearer token), and forwards
+# it to the Elastic Cloud Managed OTLP endpoint (mOTLP) using an API Key.
+#
+# Required environment variables:
+#   EMBRACE_INGEST_TOKEN  - shared secret token configured in the Embrace dashboard
+#   MOTLP_ENDPOINT        - Elastic Cloud Managed OTLP endpoint (.ingest URL)
+#   ELASTICSEARCH_API_KEY - Elastic Cloud API key for the mOTLP endpoint
+#
+# See .github/README.md#embrace--elastic-motlp-gateway for deployment instructions.
+
+extensions:
+  # Validates that incoming requests from Embrace carry the expected bearer token.
+  bearertokenauth:
+    token: ${env:EMBRACE_INGEST_TOKEN}
+  health_check:
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        auth:
+          authenticator: bearertokenauth
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: bearertokenauth
+        cors:
+          allowed_origins:
+            - "https://*"
+
+exporters:
+  otlphttp/elastic:
+    endpoint: ${env:MOTLP_ENDPOINT}
+    headers:
+      Authorization: "ApiKey ${env:ELASTICSEARCH_API_KEY}"
+    # Queue and batch settings tuned to mOTLP payload limits (1 MB min / 4 MB max).
+    # See: https://www.elastic.co/docs/reference/opentelemetry/motlp#otlp-client-configuration
+    sending_queue:
+      enabled: true
+      sizer: bytes
+      queue_size: 50_000_000
+      block_on_overflow: true
+      batch:
+        flush_timeout: 1s
+        min_size: 1_000_000
+        max_size: 4_000_000
+
+processors:
+  batch:
+    timeout: 1s
+    # Do not split batches — splitting metrics requests can cause version_conflict_engine_exception in TSDB.
+    send_batch_max_size: 0
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+service:
+  extensions: [bearertokenauth, health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/elastic]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/elastic]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/elastic]

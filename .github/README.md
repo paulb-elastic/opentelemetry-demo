@@ -162,6 +162,125 @@ See the [corresponding README](../playwright/README.md) for more details.
 - Sessions appear in the [Embrace dashboard](https://dash.embrace.io) once a session ends
   (tab closed or backgrounded). It may take a few minutes for the first session to appear.
 
+## Embrace → Elastic mOTLP Gateway
+
+Embrace's data forwarder uses the OTLP protocol internally, but its Elastic destination only exposes the legacy APM server endpoint (`.apm`). This section describes how to run a standalone OTel Collector as a gateway on the same EC2 instance that translates authentication and satisfies the batching requirements of Elastic's [Cloud Managed OTLP endpoint](https://www.elastic.co/docs/reference/opentelemetry/motlp) (`.ingest`).
+
+```
+Embrace → (HTTPS + bearer token) → Nginx :443 → OTel Collector :4318 → Elastic mOTLP (.ingest)
+```
+
+No protocol translation is required — both ends speak OTLP. The collector handles:
+- **Auth translation**: Embrace bearer token → Elastic API Key header
+- **Batching**: queue and batch settings tuned to mOTLP payload limits (1 MB min / 4 MB max)
+
+### Prerequisites
+
+- The repo is already cloned on the EC2 instance.
+- Docker is installed (`docker --version`).
+- Nginx and Certbot are installed:
+  ```bash
+  sudo apt update
+  sudo apt install -y nginx certbot python3-certbot-nginx
+  ```
+- The EC2 instance has an **Elastic IP** attached so the public hostname stays stable across restarts. Find the hostname in the EC2 console under **Instance → Public IPv4 DNS** (e.g. `ec2-1-2-3-4.compute-1.amazonaws.com`).
+
+### EC2 Security Group Rules
+
+| Port | Source | Purpose |
+|------|--------|---------|
+| 80 | 0.0.0.0/0 | Let's Encrypt HTTP-01 challenge (can be closed after cert is issued) |
+| 443 | 0.0.0.0/0 (or Embrace egress CIDRs) | Embrace → Nginx HTTPS |
+
+Ports 4317 and 4318 should **not** be open — Docker binds them to `127.0.0.1` only (see step 2).
+
+### Step 1 — Set environment variables
+
+Add the following to `.env.override` (or export them in your shell before running Docker):
+
+```bash
+# Any strong random string — enter the same value as "Secret Token" in the Embrace dashboard.
+# Generate one with: openssl rand -hex 32
+EMBRACE_INGEST_TOKEN=your-strong-random-secret
+
+# Elastic Cloud Managed OTLP endpoint (.ingest URL, NOT the .apm URL).
+# Find it: Elastic Cloud → Manage project → Application endpoints → Managed OTLP
+MOTLP_ENDPOINT=https://<your-deployment>.ingest.elastic.cloud
+
+# API key for the mOTLP endpoint (same ELASTICSEARCH_API_KEY used elsewhere in this repo).
+ELASTICSEARCH_API_KEY=your-elastic-api-key
+```
+
+### Step 2 — Run the OTel Collector
+
+From the cloned repo root on the EC2 instance:
+
+```bash
+docker run -d --restart unless-stopped \
+  -p 127.0.0.1:4318:4318 \
+  -e EMBRACE_INGEST_TOKEN="${EMBRACE_INGEST_TOKEN}" \
+  -e MOTLP_ENDPOINT="${MOTLP_ENDPOINT}" \
+  -e ELASTICSEARCH_API_KEY="${ELASTICSEARCH_API_KEY}" \
+  -v "$(pwd)/src/otel-collector/otelcol-embrace-gateway-config.yaml:/etc/otel/config.yaml" \
+  ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.139.0 \
+  --config /etc/otel/config.yaml
+```
+
+`-p 127.0.0.1:4318:4318` binds the port to loopback only — Nginx is the only process that can reach it.
+
+### Step 3 — Obtain the TLS certificate
+
+```bash
+sudo certbot --nginx -d ec2-1-2-3-4.compute-1.amazonaws.com
+```
+
+Replace `ec2-1-2-3-4.compute-1.amazonaws.com` with your actual EC2 public DNS name. Certbot writes the TLS config into Nginx automatically. Port 80 must be open in the security group for this step.
+
+### Step 4 — Configure Nginx
+
+Copy the provided template and substitute your hostname:
+
+```bash
+sudo cp src/otel-collector/nginx-embrace-gateway.conf \
+        /etc/nginx/sites-available/embrace-gateway
+
+sudo sed -i 's/YOUR_EC2_HOSTNAME/ec2-1-2-3-4.compute-1.amazonaws.com/g' \
+        /etc/nginx/sites-available/embrace-gateway
+
+sudo ln -s /etc/nginx/sites-available/embrace-gateway \
+           /etc/nginx/sites-enabled/embrace-gateway
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Step 5 — Configure Embrace
+
+In the Embrace dashboard, update your Elastic destination:
+
+| Field | Value |
+|-------|-------|
+| Server URL / OTLP Endpoint | `https://ec2-1-2-3-4.compute-1.amazonaws.com` (no port — Nginx listens on standard HTTPS 443) |
+| Secret Token | the value you set for `EMBRACE_INGEST_TOKEN` |
+
+### Certificate auto-renewal
+
+Certbot installs a systemd timer that renews certificates automatically. Verify it is active:
+
+```bash
+sudo systemctl status certbot.timer
+```
+
+After the initial certificate is issued you can close port 80 in the security group — Certbot renews via port 443 using the TLS-ALPN-01 challenge when Nginx is running.
+
+### mOTLP limitations
+
+- Only **delta temporality** histograms are supported; cumulative histograms are dropped.
+- **Tail-based sampling** is not available on the managed endpoint.
+- **Universal Profiling** is not available via this path.
+- Requires **Elastic Cloud Serverless** or **Elastic Cloud Hosted (ECH)** — not available for self-managed, ECE, or ECK deployments.
+
+---
+
 ## Docker
 
 ### Prerequisites:
