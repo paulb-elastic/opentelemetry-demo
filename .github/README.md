@@ -40,8 +40,10 @@ npx playwright install-deps chromium   # Linux system libs Chromium needs
 npx playwright install chromium        # Chromium binary itself
 # 8. Run traffic indefinitely
 cd playwright
-npm run journey:forever   # start
-npm run journey:stop      # stop (run from any other terminal window)
+nohup npm run journey:forever > ~/journey.log 2>&1 &
+echo "Running — tail -f ~/journey.log to watch"
+# To stop:
+npm run journey:stop
 ```
 
 If docker compose fails to install, try:
