@@ -39,10 +39,9 @@ npm install
 npx playwright install-deps chromium   # Linux system libs Chromium needs
 npx playwright install chromium        # Chromium binary itself
 # 8. Run traffic indefinitely
-cd ..
 cd playwright
-nohup npm run journey:forever > ~/journey.log 2>&1 &
-echo "Running — tail -f ~/journey.log to watch"
+npm run journey:forever   # start
+npm run journey:stop      # stop (run from any other terminal window)
 ```
 
 If docker compose fails to install, try:
@@ -147,10 +146,22 @@ the existing OTel collector export, with no changes to backend instrumentation.
 
 There are some Playwright journeys configured to generate traffic against the oTel demo that will beacon RUM data back to Embrace, too.
 
-For example, by running the following command (from the `playwright` folder) to run random journeys indefinitely:
-```
+Run random journeys indefinitely from the `playwright` folder:
+
+```bash
 npm run journey:forever
 ```
+
+**Starting and stopping cleanly**
+
+Because `journey:forever` spawns multiple Chromium browser workers, a plain Ctrl+C may not kill all child processes. Use the companion stop command instead:
+
+```bash
+npm run journey:forever   # start
+npm run journey:stop      # stop — run this from any other terminal window
+```
+
+`journey:stop` kills the entire process group (npx, Playwright workers, Chromium) and cleans up a `/tmp/journey-forever.pid` file written on startup. It works even if you can't Ctrl+C the original window.
 
 See the [corresponding README](../playwright/README.md) for more details.
 
