@@ -8,7 +8,6 @@ import CurrencyProvider from '../providers/Currency.provider';
 import CartProvider from '../providers/Cart.provider';
 import { ThemeProvider } from 'styled-components';
 import Theme from '../styles/Theme';
-import FrontendTracer from '../utils/telemetry/FrontendTracer';
 import { initEmbrace } from '../utils/telemetry/EmbraceTracer';
 import SessionGateway from '../gateways/Session.gateway';
 import { OpenFeatureProvider, OpenFeature } from '@openfeature/react-sdk';
@@ -28,7 +27,6 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  FrontendTracer();
   initEmbrace();
   if (window.location) {
     const session = SessionGateway.getSession();
