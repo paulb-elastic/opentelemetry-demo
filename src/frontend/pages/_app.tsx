@@ -18,9 +18,7 @@ declare global {
     ENV: {
       NEXT_PUBLIC_PLATFORM?: string;
       NEXT_PUBLIC_OTEL_SERVICE_NAME?: string;
-      NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?: string;
       NEXT_PUBLIC_DEPLOYMENT_ENVIRONMENT?: string;
-      IS_SYNTHETIC_REQUEST?: string;
       NEXT_PUBLIC_EMBRACE_APP_ID?: string;
     };
   }
