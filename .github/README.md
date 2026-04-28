@@ -40,7 +40,10 @@ npx playwright install-deps chromium   # Linux system libs Chromium needs
 npx playwright install chromium        # Chromium binary itself
 # 8. Run traffic indefinitely
 cd playwright
-nohup npm run journey:forever > ~/journey.log 2>&1 &
+####### Run with the default base URL (which will be localhost)
+# nohup npm run journey:forever > ~/journey.log 2>&1 &
+####### Or run with the given base URL
+BASE_URL=http://1-2-3-4.sslip.io:8080 nohup npm run journey:forever > ~/journey.log 2>&1 &
 echo "Running — tail -f ~/journey.log to watch"
 # To stop:
 npm run journey:stop
